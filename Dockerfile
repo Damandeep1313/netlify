@@ -1,5 +1,8 @@
-# Use a lightweight Node.js image
-FROM node:16-alpine
+# Use a Debian-based Node.js image
+FROM node:16-bullseye
+
+# Install zip via apt-get
+RUN apt-get update && apt-get install -y zip
 
 # Create app directory inside container
 WORKDIR /app
