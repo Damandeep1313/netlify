@@ -7,11 +7,14 @@
  * 2) POST to http://localhost:3000/deploy with JSON:
  *    { "url": "https://some-site-with-html" }
  *
+ * Also provide header:
+ *    netlify-auth-token: <YOUR_NETLIFY_AUTH_TOKEN>
+ *
  * The server will:
  *   - Fetch the HTML
  *   - Save as build/index.html
  *   - Zip build/ -> site.zip
- *   - Deploy to Netlify (using .env credentials)
+ *   - Deploy to Netlify (using the token from request header and SITE_ID from .env)
  *   - Return ONLY a success message + final link in JSON
  *******************************************************/
 
@@ -22,14 +25,8 @@ const fs = require("fs-extra");
 const path = require("path");
 const { execSync } = require("child_process");
 
-// 1️⃣ Netlify credentials
-const NETLIFY_AUTH_TOKEN = process.env.NETLIFY_AUTH_TOKEN;
+// 1️⃣ Netlify site ID from .env (optional)
 const NETLIFY_SITE_ID = process.env.NETLIFY_SITE_ID;
-
-if (!NETLIFY_AUTH_TOKEN) {
-  console.error("❌ ERROR: Missing NETLIFY_AUTH_TOKEN in .env");
-  process.exit(1);
-}
 
 // Determine Netlify endpoint (existing site vs. new site)
 const netlifyEndpoint = NETLIFY_SITE_ID
@@ -43,22 +40,29 @@ const PORT = 3000;
 // Use JSON parsing
 app.use(express.json());
 
-// 3️⃣ POST /deploy: Expects { "url": "<HTML URL>" }
+// 3️⃣ POST /deploy: Expects { "url": "<HTML URL>" } and header "netlify-auth-token"
 app.post("/deploy", async (req, res) => {
-  const { url } = req.body;
-  if (!url) {
-    return res.status(400).json({ error: "No 'url' provided in JSON body." });
-  }
-
-  console.log(`\n🌍 Fetching HTML from: ${url}`);
-
-  // Define paths
-  const baseFolder = __dirname;
-  const buildFolder = path.join(baseFolder, "build");
-  const indexFile = path.join(buildFolder, "index.html");
-  const zipFile = path.join(baseFolder, "site.zip");
-
   try {
+    // Read Netlify Auth Token from header (required)
+    const netlifyAuthToken = req.headers["netlify-auth-token"];
+    if (!netlifyAuthToken) {
+      return res.status(400).json({ error: "Missing 'netlify-auth-token' header." });
+    }
+
+    // Read the URL from JSON body
+    const { url } = req.body;
+    if (!url) {
+      return res.status(400).json({ error: "No 'url' provided in JSON body." });
+    }
+
+    console.log(`\n🌍 Fetching HTML from: ${url}`);
+
+    // Define paths
+    const baseFolder = __dirname;
+    const buildFolder = path.join(baseFolder, "build");
+    const indexFile = path.join(buildFolder, "index.html");
+    const zipFile = path.join(baseFolder, "site.zip");
+
     // 4️⃣ Fetch the HTML
     const response = await axios.get(url);
     if (typeof response.data !== "string") {
@@ -87,12 +91,14 @@ app.post("/deploy", async (req, res) => {
     // Read the zip into a buffer
     const zipBuffer = fs.readFileSync(zipFile);
 
-    // 7️⃣ Deploy to Netlify
+    // 7️⃣ Deploy to Netlify using the token from headers
     console.log("🚀 Deploying ZIP to Netlify...");
+    console.log("Netlify endpoint:", netlifyEndpoint);
+
     const deployResp = await axios.post(netlifyEndpoint, zipBuffer, {
       headers: {
         "Content-Type": "application/zip",
-        Authorization: `Bearer ${NETLIFY_AUTH_TOKEN}`,
+        Authorization: `Bearer ${netlifyAuthToken}`,
       },
     });
 
@@ -103,9 +109,8 @@ app.post("/deploy", async (req, res) => {
     // 8️⃣ Send ONLY a success message + final link
     return res.json({
       message: "Deployment success!",
-      link: data.deploy_url || data.url || null
+      link: data.deploy_url || data.url || null,
     });
-
   } catch (error) {
     console.error("❌ ERROR deploying:", error.response?.data || error.message || error);
     return res.status(500).json({
@@ -118,5 +123,6 @@ app.post("/deploy", async (req, res) => {
 // 4️⃣ Start the server
 app.listen(PORT, () => {
   console.log(`\n✅ Server running on http://localhost:${PORT}`);
-  console.log(`Send a POST request to /deploy with JSON like: { "url": "https://example.com" }\n`);
+  console.log(`Send a POST request to /deploy with JSON like: { "url": "https://example.com" }`);
+  
 });
