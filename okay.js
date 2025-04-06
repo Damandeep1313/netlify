@@ -13,10 +13,10 @@ app.post("/deploy", async (req, res) => {
   try {
     // ✅ Read token from standard Authorization header
     const authHeader = req.headers["authorization"];
-    const netlifyAuthToken = authHeader?.startsWith("Bearer ") ? authHeader.split(" ")[1] : null;
+    const netlifyAuthToken = req.headers["authorization"];
 
     if (!netlifyAuthToken) {
-      return res.status(400).json({ error: "Missing 'Authorization: Bearer <token>' header." });
+      return res.status(400).json({ error: "Missing 'Authorization' header." });
     }
 
     const { url } = req.body;
