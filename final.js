@@ -21,8 +21,8 @@ app.post("/deploy", async (req, res) => {
 
     // 🔵 Determine endpoint (existing site vs. new site)
     const netlifyEndpoint = netlifySiteId
-      ? "https://api.netlify.com/api/v1/sites"
-      : `https://api.netlify.com/api/v1/sites/${netlifySiteId}/deploys`;
+      ? `https://api.netlify.com/api/v1/sites/${netlifySiteId}/deploys`
+      : "https://api.netlify.com/api/v1/sites";
 
     const { url } = req.body;
     if (!url) {
