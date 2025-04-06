@@ -11,18 +11,13 @@ app.use(express.json());
 
 app.post("/deploy", async (req, res) => {
   try {
-    // 🟡 Required headers
-    const netlifyAuthToken = req.headers["Authorization"];
-    const netlifySiteId = req.headers["netlify-site-id"]; // optional
+    // ✅ Read token from standard Authorization header
+    const authHeader = req.headers["authorization"];
+    const netlifyAuthToken = authHeader?.startsWith("Bearer ") ? authHeader.split(" ")[1] : null;
 
     if (!netlifyAuthToken) {
-      return res.status(400).json({ error: "Missing 'Authorization' header." });
+      return res.status(400).json({ error: "Missing 'Authorization: Bearer <token>' header." });
     }
-
-    // 🔵 Determine endpoint (existing site vs. new site)
-    const netlifyEndpoint = netlifySiteId
-      ? `https://api.netlify.com/api/v1/sites/${netlifySiteId}/deploys`
-      : "https://api.netlify.com/api/v1/sites";
 
     const { url } = req.body;
     if (!url) {
@@ -31,7 +26,6 @@ app.post("/deploy", async (req, res) => {
 
     console.log(`🌍 Fetching HTML from: ${url}`);
 
-    // Setup paths
     const baseFolder = __dirname;
     const buildFolder = path.join(baseFolder, "build");
     const indexFile = path.join(buildFolder, "index.html");
@@ -53,6 +47,7 @@ app.post("/deploy", async (req, res) => {
 
     const zipBuffer = fs.readFileSync(zipFile);
 
+    const netlifyEndpoint = "https://api.netlify.com/api/v1/sites";
     console.log("🚀 Deploying to Netlify...");
     console.log("Using endpoint:", netlifyEndpoint);
 
