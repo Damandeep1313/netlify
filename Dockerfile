@@ -23,4 +23,4 @@ COPY . .
 EXPOSE 3000
 
 # Start the server
-CMD ["node", "deploy.js"]
+CMD ["node", "final.js"]
