@@ -12,11 +12,11 @@ app.use(express.json());
 app.post("/deploy", async (req, res) => {
   try {
     // 🟡 Required headers
-    const netlifyAuthToken = req.headers["netlify-auth-token"];
+    const netlifyAuthToken = req.headers["x-netlify-auth-token"];
     const netlifySiteId = req.headers["netlify-site-id"]; // optional
 
     if (!netlifyAuthToken) {
-      return res.status(400).json({ error: "Missing 'netlify-auth-token' header." });
+      return res.status(400).json({ error: "Missing 'x-netlify-auth-token' header." });
     }
 
     // 🔵 Determine endpoint (existing site vs. new site)
